@@ -1,10 +1,13 @@
 extern crate exitcode;
+extern crate termcolor;
 extern crate websocket;
 
 use std::env;
-use std::io::stdin;
+use std::io::{stdin, Write};
 use std::sync::mpsc::channel;
 use std::thread;
+
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 use websocket::client::ClientBuilder;
 use websocket::{Message, OwnedMessage};
@@ -14,7 +17,7 @@ use smol::errors::SmolError;
 fn help(args: Vec<String>) -> SmolError {
     println!(
         "usage: {} CONNECTION
-    Interact with CONNECTION using websocket protocol,",
+    Interact with CONNECTION using websocket protocol.",
         args[0]
     );
 
@@ -40,7 +43,6 @@ fn ws(connection: &str) -> Result<(), SmolError> {
 
     let send_loop = thread::spawn(move || {
         loop {
-            // Send loop
             let message = match rx.recv() {
                 Ok(m) => m,
                 Err(e) => {
@@ -51,12 +53,10 @@ fn ws(connection: &str) -> Result<(), SmolError> {
             match message {
                 OwnedMessage::Close(_) => {
                     let _ = sender.send_message(&message);
-                    // If it's a close message, just send it and then return.
                     return;
                 }
                 _ => (),
             }
-            // Send the message
             match sender.send_message(&message) {
                 Ok(()) => (),
                 Err(e) => {
@@ -69,7 +69,8 @@ fn ws(connection: &str) -> Result<(), SmolError> {
     });
 
     let receive_loop = thread::spawn(move || {
-        // Receive loop
+        let mut stdout = StandardStream::stdout(ColorChoice::Always);
+
         for message in receiver.incoming_messages() {
             let message = match message {
                 Ok(m) => m,
@@ -81,22 +82,27 @@ fn ws(connection: &str) -> Result<(), SmolError> {
             };
             match message {
                 OwnedMessage::Close(_) => {
-                    // Got a close message, so send a close message and return
                     let _ = tx_1.send(OwnedMessage::Close(None));
                     return;
                 }
-                OwnedMessage::Ping(data) => {
-                    match tx_1.send(OwnedMessage::Pong(data)) {
-                        // Send a pong in response
-                        Ok(()) => (),
-                        Err(e) => {
-                            println!("Receive Loop: {:?}", e);
-                            return;
-                        }
+                OwnedMessage::Ping(data) => match tx_1.send(OwnedMessage::Pong(data)) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        println!("Receive Loop: {:?}", e);
+                        return;
+                    }
+                },
+                _ => {
+                    match stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow))) {
+                        Err(_) => return,
+                        _ => (),
+                    };
+
+                    match writeln!(&mut stdout, "Receive Loop: {:?}", message) {
+                        Ok(_) => (),
+                        Err(_) => return,
                     }
                 }
-                // Say what we received
-                _ => println!("Receive Loop: {:?}", message),
             }
         }
     });
@@ -110,13 +116,10 @@ fn ws(connection: &str) -> Result<(), SmolError> {
 
         let message = match trimmed {
             "/close" => {
-                // Close the connection
                 let _ = tx.send(OwnedMessage::Close(None));
                 break;
             }
-            // Send a ping
             "/ping" => OwnedMessage::Ping(b"PING".to_vec()),
-            // Otherwise, just send text
             _ => OwnedMessage::Text(trimmed.to_string()),
         };
 
@@ -129,14 +132,11 @@ fn ws(connection: &str) -> Result<(), SmolError> {
         }
     }
 
-    // We're exiting
-
-    println!("Waiting for child threads to exit");
-
+    println!("Exiting");
     let _ = send_loop.join();
     let _ = receive_loop.join();
-
     println!("Exited");
+
     Ok(())
 }
 
@@ -144,7 +144,7 @@ fn run(args: Vec<String>) -> Result<(), SmolError> {
     let connection: Option<&str> = match args.len() {
         1 => Some("ws://echo.websocket.org"),
         2 => Some(&args[1]),
-        _ => None
+        _ => None,
     };
 
     match connection {

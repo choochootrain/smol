@@ -7,3 +7,9 @@ smol scripting utilities for stuff
 usage: findup NAME
     Find first file or directory named NAME in current or nearest ancestor's directory.
 ```
+
+## ws
+```bash
+usage: ws CONNECTION
+    Interact with CONNECTION using websocket protocol.
+```
