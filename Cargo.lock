@@ -1,4 +1,14 @@
 [[package]]
+name = "exitcode"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "smol"
 version = "0.1.0"
+dependencies = [
+ "exitcode 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
+[metadata]
+"checksum exitcode 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "de853764b47027c2e862a995c34978ffa63c1501f2e15f987ba11bd4f9bba193"

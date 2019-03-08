@@ -5,3 +5,4 @@ authors = ["Hurshal Patel <hurshal@imap.cc>"]
 edition = "2018"
 
 [dependencies]
+exitcode = "1.1.2"
