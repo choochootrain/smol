@@ -1,3 +1,4 @@
+extern crate exitcode;
 extern crate websocket;
 
 use std::env;
@@ -24,14 +25,14 @@ fn ws(connection: &str) -> Result<(), SmolError> {
     println!("Connecting to {}", connection);
 
     let client = ClientBuilder::new(connection)
-        .unwrap()
+        .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Could not connect"))?
         .add_protocol("rust-websocket")
         .connect_insecure()
-        .unwrap();
+        .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Could not connect"))?;
 
-    println!("Successfully connected");
+    println!("Successfully connected to {}", connection);
 
-    let (mut receiver, mut sender) = client.split().unwrap();
+    let (mut receiver, mut sender) = client.split()?;
 
     let (tx, rx) = channel();
 
@@ -103,7 +104,7 @@ fn ws(connection: &str) -> Result<(), SmolError> {
     loop {
         let mut input = String::new();
 
-        stdin().read_line(&mut input).unwrap();
+        stdin().read_line(&mut input)?;
 
         let trimmed = input.trim();
 
@@ -141,7 +142,7 @@ fn ws(connection: &str) -> Result<(), SmolError> {
 
 fn run(args: Vec<String>) -> Result<(), SmolError> {
     let connection: Option<&str> = match args.len() {
-        1 => Some("ws://demos.kaazing.com/echo"),
+        1 => Some("ws://echo.websocket.org"),
         2 => Some(&args[1]),
         _ => None
     };
