@@ -1,0 +1,1 @@
+// super performant inlined lib

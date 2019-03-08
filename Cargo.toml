@@ -1,0 +1,7 @@
+[package]
+name = "smol"
+version = "0.1.0"
+authors = ["Hurshal Patel <hurshal@imap.cc>"]
+edition = "2018"
+
+[dependencies]
