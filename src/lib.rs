@@ -1,1 +1,1 @@
-// super performant inlined lib
+pub mod errors;
