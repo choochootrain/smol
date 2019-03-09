@@ -1,16 +1,22 @@
 extern crate exitcode;
 extern crate termcolor;
 extern crate websocket;
+extern crate futures;
+extern crate tokio;
 
 use std::env;
-use std::io::{stdin, Write};
-use std::sync::mpsc::channel;
+use std::io::stdin;
 use std::thread;
 
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use websocket::client::ClientBuilder;
-use websocket::{Message, OwnedMessage};
+use futures::future::Future;
+use futures::sink::Sink;
+use futures::stream::Stream;
+use futures::sync::mpsc;
+
+use websocket::result::WebSocketError;
+use websocket::{ClientBuilder, OwnedMessage};
 
 use smol::errors::SmolError;
 
@@ -27,122 +33,60 @@ fn help(args: Vec<String>) -> SmolError {
 fn ws(connection: &str) -> Result<(), SmolError> {
     println!("Connecting to {}", connection);
 
-    let client = ClientBuilder::new(connection)
-        .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Could not connect"))?
-        .add_protocol("rust-websocket")
-        .connect_insecure()
-        .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Could not connect"))?;
+    let mut runtime = tokio::runtime::current_thread::Builder::new()
+        .build()?;
 
-    println!("Successfully connected to {}", connection);
-
-    let (mut receiver, mut sender) = client.split()?;
-
-    let (tx, rx) = channel();
-
-    let tx_1 = tx.clone();
-
-    let send_loop = thread::spawn(move || {
-        loop {
-            let message = match rx.recv() {
-                Ok(m) => m,
-                Err(e) => {
-                    println!("Send Loop: {:?}", e);
-                    return;
-                }
-            };
-            match message {
-                OwnedMessage::Close(_) => {
-                    let _ = sender.send_message(&message);
-                    return;
-                }
-                _ => (),
-            }
-            match sender.send_message(&message) {
-                Ok(()) => (),
-                Err(e) => {
-                    println!("Send Loop: {:?}", e);
-                    let _ = sender.send_message(&Message::close());
-                    return;
-                }
-            }
-        }
-    });
-
-    let receive_loop = thread::spawn(move || {
-        let mut stdout = StandardStream::stdout(ColorChoice::Always);
-
-        for message in receiver.incoming_messages() {
-            let message = match message {
-                Ok(m) => m,
-                Err(e) => {
-                    println!("Receive Loop: {:?}", e);
-                    let _ = tx_1.send(OwnedMessage::Close(None));
-                    return;
-                }
-            };
-            match message {
-                OwnedMessage::Close(_) => {
-                    let _ = tx_1.send(OwnedMessage::Close(None));
-                    return;
-                }
-                OwnedMessage::Ping(data) => match tx_1.send(OwnedMessage::Pong(data)) {
-                    Ok(()) => (),
-                    Err(e) => {
-                        println!("Receive Loop: {:?}", e);
-                        return;
-                    }
-                },
-                _ => {
-                    match stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow))) {
-                        Err(_) => return,
-                        _ => (),
-                    };
-
-                    match writeln!(&mut stdout, "Receive Loop: {:?}", message) {
-                        Ok(_) => (),
-                        Err(_) => return,
-                    }
-                }
-            }
-        }
-    });
-
-    loop {
+    let (usr_msg, stdin_ch) = mpsc::channel(0);
+    thread::spawn(move || {
         let mut input = String::new();
+        let mut stdin_sink = usr_msg.wait();
+        loop {
+            input.clear();
+            stdin().read_line(&mut input).unwrap();
+            let trimmed = input.trim();
 
-        stdin().read_line(&mut input)?;
+            let (close, msg) = match trimmed {
+                "/close" => (true, OwnedMessage::Close(None)),
+                "/ping" => (false, OwnedMessage::Ping(b"PING".to_vec())),
+                _ => (false, OwnedMessage::Text(trimmed.to_string())),
+            };
 
-        let trimmed = input.trim();
+            stdin_sink
+                .send(msg).expect("Uh oh");
 
-        let message = match trimmed {
-            "/close" => {
-                let _ = tx.send(OwnedMessage::Close(None));
-                break;
-            }
-            "/ping" => OwnedMessage::Ping(b"PING".to_vec()),
-            _ => OwnedMessage::Text(trimmed.to_string()),
-        };
-
-        match tx.send(message) {
-            Ok(()) => (),
-            Err(e) => {
-                println!("Main Loop: {:?}", e);
+            if close {
                 break;
             }
         }
-    }
+    });
 
-    println!("Exiting");
-    let _ = send_loop.join();
-    let _ = receive_loop.join();
-    println!("Exited");
+    let runner = ClientBuilder::new(connection)
+        .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Could not connect"))?
+        .async_connect(None)
+        .and_then(|(duplex, _)| {
+            let (sink, stream) = duplex.split();
+            stream
+                .filter_map(|message| {
+                    println!("Received Message: {:?}", message);
+                    match message {
+                        OwnedMessage::Close(e) => Some(OwnedMessage::Close(e)),
+                        OwnedMessage::Ping(d) => Some(OwnedMessage::Pong(d)),
+                        _ => None,
+                    }
+                })
+                .select(stdin_ch.map_err(|_| WebSocketError::NoDataAvailable))
+                .forward(sink)
+        });
+
+    runtime.block_on(runner)
+        .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Runtime error"))?;
 
     Ok(())
 }
 
 fn run(args: Vec<String>) -> Result<(), SmolError> {
     let connection: Option<&str> = match args.len() {
-        1 => Some("ws://echo.websocket.org"),
+        1 => Some("wss://echo.websocket.org"),
         2 => Some(&args[1]),
         _ => None,
     };
