@@ -2,22 +2,21 @@ extern crate exitcode;
 
 use std::env;
 use std::path::{Path, PathBuf};
-use std::result::Result;
 
-use smol::errors::{SmolError};
+use smol::result::{SmolResult, SmolError};
 
 
-fn help(args: Vec<String>) -> SmolError {
+fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
         "usage: {} NAME
     Find first file or directory named NAME in current or nearest ancestor's directory.",
         args[0]
     );
 
-    SmolError(exitcode::USAGE, None)
+    SmolError(exitcode::USAGE, None).into()
 }
 
-fn findup(name: &String) -> Result<(), SmolError> {
+fn findup(name: &String) -> SmolResult<()> {
     let root = Path::new("/");
     let path: &Path = Path::new(name);
 
@@ -59,7 +58,7 @@ fn findup(name: &String) -> Result<(), SmolError> {
     Ok(())
 }
 
-fn run(args: Vec<String>) -> Result<(), SmolError> {
+fn run(args: Vec<String>) -> SmolResult<()> {
     match args.len() {
         2 => {
             let name = &args[1];

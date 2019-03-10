@@ -2,6 +2,8 @@ use std::error::Error;
 use std::fmt;
 use std::io;
 
+pub type SmolResult<T> = Result<T, SmolError>;
+
 #[derive(Debug)]
 pub struct SmolError(pub exitcode::ExitCode, pub Option<String>);
 

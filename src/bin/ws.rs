@@ -8,8 +8,6 @@ use std::env;
 use std::io::stdin;
 use std::thread;
 
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
-
 use futures::future::Future;
 use futures::sink::Sink;
 use futures::stream::Stream;
@@ -18,19 +16,19 @@ use futures::sync::mpsc;
 use websocket::result::WebSocketError;
 use websocket::{ClientBuilder, OwnedMessage};
 
-use smol::errors::SmolError;
+use smol::result::{SmolResult, SmolError};
 
-fn help(args: Vec<String>) -> SmolError {
+fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
         "usage: {} CONNECTION
     Interact with CONNECTION using websocket protocol.",
         args[0]
     );
 
-    SmolError(exitcode::USAGE, None)
+    SmolError(exitcode::USAGE, None).into()
 }
 
-fn ws(connection: &str) -> Result<(), SmolError> {
+fn ws(connection: &str) -> SmolResult<()> {
     println!("Connecting to {}", connection);
 
     let mut runtime = tokio::runtime::current_thread::Builder::new()
@@ -64,6 +62,8 @@ fn ws(connection: &str) -> Result<(), SmolError> {
         .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Could not connect"))?
         .async_connect(None)
         .and_then(|(duplex, _)| {
+            println!("Connected");
+
             let (sink, stream) = duplex.split();
             stream
                 .filter_map(|message| {
@@ -84,7 +84,7 @@ fn ws(connection: &str) -> Result<(), SmolError> {
     Ok(())
 }
 
-fn run(args: Vec<String>) -> Result<(), SmolError> {
+fn run(args: Vec<String>) -> SmolResult<()> {
     let connection: Option<&str> = match args.len() {
         1 => Some("wss://echo.websocket.org"),
         2 => Some(&args[1]),
