@@ -1,8 +1,8 @@
 extern crate exitcode;
-extern crate termcolor;
-extern crate websocket;
 extern crate futures;
+extern crate termcolor;
 extern crate tokio;
+extern crate websocket;
 
 use std::env;
 use std::io::stdin;
@@ -16,7 +16,7 @@ use futures::sync::mpsc;
 use websocket::result::WebSocketError;
 use websocket::{ClientBuilder, OwnedMessage};
 
-use smol::result::{SmolResult, SmolError};
+use smol::result::{SmolError, SmolResult};
 
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
@@ -31,8 +31,7 @@ fn help(args: Vec<String>) -> SmolResult<()> {
 fn ws(connection: &str) -> SmolResult<()> {
     println!("Connecting to {}", connection);
 
-    let mut runtime = tokio::runtime::current_thread::Builder::new()
-        .build()?;
+    let mut runtime = tokio::runtime::current_thread::Builder::new().build()?;
 
     let (usr_msg, stdin_ch) = mpsc::channel(0);
     thread::spawn(move || {
@@ -49,8 +48,7 @@ fn ws(connection: &str) -> SmolResult<()> {
                 _ => (false, OwnedMessage::Text(trimmed.to_string())),
             };
 
-            stdin_sink
-                .send(msg).expect("Uh oh");
+            stdin_sink.send(msg).expect("Uh oh");
 
             if close {
                 break;
@@ -78,7 +76,8 @@ fn ws(connection: &str) -> SmolResult<()> {
                 .forward(sink)
         });
 
-    runtime.block_on(runner)
+    runtime
+        .block_on(runner)
         .map_err(|e| SmolError::from_err(exitcode::NOHOST, &e, "Runtime error"))?;
 
     Ok(())

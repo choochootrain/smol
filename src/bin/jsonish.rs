@@ -1,14 +1,15 @@
 extern crate exitcode;
 extern crate pest;
-#[macro_use] extern crate pest_derive;
+#[macro_use]
+extern crate pest_derive;
 
 use std::env;
 use std::fs;
 
-use pest::Parser;
 use pest::error::Error;
+use pest::Parser;
 
-use smol::result::{SmolResult, SmolError};
+use smol::result::{SmolError, SmolResult};
 
 #[derive(Parser)]
 #[grammar = "grammar/jsonish.pest"]
@@ -43,12 +44,19 @@ fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
 
                         let name = inner_rules.next().unwrap();
                         let name = match name.as_rule() {
-                            Rule::string => name.into_inner().next().unwrap().into_inner().next().unwrap().as_str(),
+                            Rule::string => name
+                                .into_inner()
+                                .next()
+                                .unwrap()
+                                .into_inner()
+                                .next()
+                                .unwrap()
+                                .as_str(),
                             Rule::identifier_name => name.as_str(),
                             _ => {
                                 println!("UNEXPECTED {:?}", name);
                                 unreachable!()
-                            },
+                            }
                         };
 
                         let value = parse_value(inner_rules.next().unwrap());
@@ -57,7 +65,15 @@ fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
                     .collect(),
             ),
             Rule::array => JSONValue::Array(pair.into_inner().map(parse_value).collect()),
-            Rule::string => JSONValue::String(pair.into_inner().next().unwrap().into_inner().next().unwrap().as_str()),
+            Rule::string => JSONValue::String(
+                pair.into_inner()
+                    .next()
+                    .unwrap()
+                    .into_inner()
+                    .next()
+                    .unwrap()
+                    .as_str(),
+            ),
             Rule::number => JSONValue::Number(pair.as_str().parse().unwrap()),
             Rule::boolean => JSONValue::Boolean(pair.as_str().parse().unwrap()),
             Rule::null => JSONValue::Null,
@@ -89,17 +105,14 @@ fn serialize_jsonvalue(val: &JSONValue) -> String {
         JSONValue::Object(o) => {
             let contents: Vec<_> = o
                 .iter()
-                .map(|(name, value)|
-                     format!("\"{}\": {}", name, serialize_jsonvalue(value)))
+                .map(|(name, value)| format!("\"{}\": {}", name, serialize_jsonvalue(value)))
                 .collect();
             format!("{{{}}}", contents.join(","))
-        },
+        }
         JSONValue::Array(a) => {
-            let contents: Vec<_> = a.iter()
-                .map(serialize_jsonvalue)
-                .collect();
+            let contents: Vec<_> = a.iter().map(serialize_jsonvalue).collect();
             format!("[{}]", contents.join(","))
-        },
+        }
         JSONValue::String(s) => format!("\"{}\"", s),
         JSONValue::Number(n) => format!("{}", n),
         JSONValue::Boolean(b) => format!("{}", b),
@@ -137,7 +150,7 @@ fn run(args: Vec<String>) -> SmolResult<()> {
 
     match file_name {
         Some(name) => parse(name).into(),
-        None => help(args).into()
+        None => help(args).into(),
     }
 }
 
@@ -154,10 +167,10 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::{assert_eq as pretty_assert_eq};
+    use pretty_assertions::assert_eq as pretty_assert_eq;
 
-    use super::*;
     use super::JSONValue::*;
+    use super::*;
 
     #[test]
     fn parses_json() {
@@ -181,20 +194,26 @@ mod tests {
             ("b", String("\\\"baz\\\"")),
             ("c", Number(-12.43)),
             ("d", Null),
-            ("$nested", Object(vec![
-                ("anotherOne", Boolean(true)),
-                ("asdf", Boolean(false)),
-            ])),
-            ("_stuff", Array(vec![
-                Number(1.0),
-                Number(2.0),
-                Number(3.0),
-                Null,
-                Object(vec![]),
-                Boolean(false),
-                String("asdf"),
-                Array(Vec::new()),
-            ])),
+            (
+                "$nested",
+                Object(vec![
+                    ("anotherOne", Boolean(true)),
+                    ("asdf", Boolean(false)),
+                ]),
+            ),
+            (
+                "_stuff",
+                Array(vec![
+                    Number(1.0),
+                    Number(2.0),
+                    Number(3.0),
+                    Null,
+                    Object(vec![]),
+                    Boolean(false),
+                    String("asdf"),
+                    Array(Vec::new()),
+                ]),
+            ),
             ("a.b!{}", String("c")),
         ]);
 
@@ -232,20 +251,26 @@ mod tests {
             ("b", String("\\\"baz\\\"")),
             ("c", Number(-12.43)),
             ("d", Null),
-            ("$nested", Object(vec![
-                ("anotherOne", Boolean(true)),
-                ("asdf", Boolean(false)),
-            ])),
-            ("_stuff", Array(vec![
-                Number(1.0),
-                Number(2.0),
-                Number(3.0),
-                Null,
-                Object(vec![]),
-                Boolean(false),
-                String("asdf"),
-                Array(Vec::new()),
-            ])),
+            (
+                "$nested",
+                Object(vec![
+                    ("anotherOne", Boolean(true)),
+                    ("asdf", Boolean(false)),
+                ]),
+            ),
+            (
+                "_stuff",
+                Array(vec![
+                    Number(1.0),
+                    Number(2.0),
+                    Number(3.0),
+                    Null,
+                    Object(vec![]),
+                    Boolean(false),
+                    String("asdf"),
+                    Array(Vec::new()),
+                ]),
+            ),
             ("a.b!{}", String("c")),
         ]);
 

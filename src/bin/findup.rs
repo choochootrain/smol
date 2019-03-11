@@ -3,8 +3,7 @@ extern crate exitcode;
 use std::env;
 use std::path::{Path, PathBuf};
 
-use smol::result::{SmolResult, SmolError};
-
+use smol::result::{SmolError, SmolResult};
 
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
