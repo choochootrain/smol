@@ -164,6 +164,7 @@ mod tests {
                 "asdf": false
             },
             "_stuff": [1, 2, 3, null, {}, false, "asdf", []],
+            "a.b!{}": "c",
         }
         "#;
 
@@ -186,6 +187,7 @@ mod tests {
                 String("asdf"),
                 Array(Vec::new()),
             ])),
+            ("a.b!{}", String("c")),
         ]);
 
         let result = parse_jsonish_file(json);
@@ -196,7 +198,7 @@ mod tests {
         pretty_assert_eq!(result, expected);
 
         let serialized = serialize_jsonvalue(&result);
-        let expected = r#"{"a": "foobar","b": "\"baz\"","c": -12.43,"d": null,"$nested": {"anotherOne": true,"asdf": false},"_stuff": [1,2,3,null,{},false,"asdf",[]]}"#;
+        let expected = r#"{"a": "foobar","b": "\"baz\"","c": -12.43,"d": null,"$nested": {"anotherOne": true,"asdf": false},"_stuff": [1,2,3,null,{},false,"asdf",[]],"a.b!{}": "c"}"#;
         pretty_assert_eq!(serialized, expected);
     }
 
@@ -213,6 +215,7 @@ mod tests {
                 asdf: false,
             },
             _stuff: [1, 2, 3, null, {}, false, "asdf", [],],
+            "a.b!{}": "c",
         }
         "#;
 
@@ -235,6 +238,7 @@ mod tests {
                 String("asdf"),
                 Array(Vec::new()),
             ])),
+            ("a.b!{}", String("c")),
         ]);
 
         let result = parse_jsonish_file(es);
@@ -245,7 +249,7 @@ mod tests {
         pretty_assert_eq!(result, expected);
 
         let serialized = serialize_jsonvalue(&result);
-        let expected = r#"{"a": "foobar","b": "\"baz\"","c": -12.43,"d": null,"$nested": {"anotherOne": true,"asdf": false},"_stuff": [1,2,3,null,{},false,"asdf",[]]}"#;
+        let expected = r#"{"a": "foobar","b": "\"baz\"","c": -12.43,"d": null,"$nested": {"anotherOne": true,"asdf": false},"_stuff": [1,2,3,null,{},false,"asdf",[]],"a.b!{}": "c"}"#;
         pretty_assert_eq!(serialized, expected);
     }
 }
