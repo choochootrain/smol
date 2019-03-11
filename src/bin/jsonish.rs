@@ -43,9 +43,12 @@ fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
 
                         let name = inner_rules.next().unwrap();
                         let name = match name.as_rule() {
-                            Rule::string => name.into_inner().next().unwrap().as_str(),
+                            Rule::string => name.into_inner().next().unwrap().into_inner().next().unwrap().as_str(),
                             Rule::identifier_name => name.as_str(),
-                            _ => unreachable!(),
+                            _ => {
+                                println!("UNEXPECTED {:?}", name);
+                                unreachable!()
+                            },
                         };
 
                         let value = parse_value(inner_rules.next().unwrap());
@@ -54,7 +57,7 @@ fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
                     .collect(),
             ),
             Rule::array => JSONValue::Array(pair.into_inner().map(parse_value).collect()),
-            Rule::string => JSONValue::String(pair.into_inner().next().unwrap().as_str()),
+            Rule::string => JSONValue::String(pair.into_inner().next().unwrap().into_inner().next().unwrap().as_str()),
             Rule::number => JSONValue::Number(pair.as_str().parse().unwrap()),
             Rule::boolean => JSONValue::Boolean(pair.as_str().parse().unwrap()),
             Rule::null => JSONValue::Null,
@@ -62,8 +65,13 @@ fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
             | Rule::EOI
             | Rule::pair
             | Rule::value
-            | Rule::inner_string
-            | Rule::char
+            | Rule::double_string
+            | Rule::single_string
+            | Rule::inner_double_string
+            | Rule::inner_single_string
+            | Rule::double_char
+            | Rule::single_char
+            | Rule::escape_char
             | Rule::identifier_name
             | Rule::identifier_start
             | Rule::identifier_part
@@ -102,7 +110,7 @@ fn serialize_jsonvalue(val: &JSONValue) -> String {
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
         "usage: {} FILE
-    Parse FILE into JSON, accepting unquoted object properties and trailing commas.",
+    Parse FILE into JSON accepting single quotes, unquoted object properties, and trailing commas.",
         args[0]
     );
 
@@ -209,12 +217,12 @@ mod tests {
             a: "foobar",
             b: "\"baz\"",
             c: -12.43,
-            d: null,
+            'd': null,
             $nested: {
                 anotherOne: true,
                 asdf: false,
             },
-            _stuff: [1, 2, 3, null, {}, false, "asdf", [],],
+            _stuff: [1, 2, 3, null, {}, false, 'asdf', [],],
             "a.b!{}": "c",
         }
         "#;

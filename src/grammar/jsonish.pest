@@ -18,23 +18,37 @@ array = {
 value = _{ object | array | string | number | boolean | null }
 
 
-string = { "\"" ~ inner_string ~ "\"" }
-inner_string = @{ char* }
+string = ${ double_string | single_string }
+
+double_string = { "\"" ~ inner_double_string ~ "\"" }
+inner_double_string = @{ double_char* }
+
+single_string = { "'" ~ inner_single_string ~ "'" }
+inner_single_string = @{ single_char* }
+
 boolean = { "true" | "false" }
 null = { "null" }
 
-char = {
+double_char = {
   !("\"" | "\\") ~ ANY
-  | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+  | escape_char
   | unicode_escape_sequence
 }
 
-identifier_name = @{ identifier_start ~ identifier_part*  }
-identifier_start = _{ unicode_letter | "$" | "_" | unicode_escape_sequence }
-identifier_part = _{ identifier_start | ASCII_DIGIT | CONNECTOR_PUNCTUATION }
+single_char = {
+  !("'" | "\\") ~ ANY
+  | escape_char
+  | unicode_escape_sequence
+}
 
-unicode_escape_sequence = @{ "\\u" ~ ASCII_HEX_DIGIT{4} }
-unicode_letter = _{ LETTER | NUMBER }
+escape_char = { "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t") }
+
+identifier_name = @{ identifier_start ~ identifier_part*  }
+identifier_start = { unicode_letter | "$" | "_" | unicode_escape_sequence }
+identifier_part = { identifier_start | ASCII_DIGIT | CONNECTOR_PUNCTUATION }
+
+unicode_escape_sequence = { "\\u" ~ ASCII_HEX_DIGIT{4} }
+unicode_letter = { LETTER | NUMBER }
 
 number = @{
   "-"?

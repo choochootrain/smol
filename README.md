@@ -16,5 +16,5 @@ usage: ws CONNECTION
 ## jsonish
 ```bash
 usage: jsonish FILE
-    Parse FILE into JSON, accepting unquoted object properties and trailing commas.
+    Parse FILE into JSON accepting single quotes, unquoted object properties, and trailing commas.
     ```
