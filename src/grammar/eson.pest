@@ -2,29 +2,39 @@ json = { SOI ~ (object | array) ~ EOI }
 
 object = {
   "{" ~ "}" |
-  "{" ~ pair ~ ( "," ~ pair)* ~ "}"
+  "{" ~ pair ~ ("," ~ pair)* ~ ","? ~ "}"
 }
 
-pair = { string ~ ":" ~ value }
+pair = {
+  string ~ ":" ~ value |
+  identifier_name ~ ":" ~ value
+}
 
 array = {
   "[" ~ "]" |
-  "[" ~ value ~ ("," ~ value)* ~ "]"
+  "[" ~ value ~ ("," ~ value)* ~ ","? ~ "]"
 }
 
 value = _{ object | array | string | number | boolean | null }
 
 
-string = ${ "\"" ~ inner ~ "\"" }
-inner = @{ char* }
+string = { "\"" ~ inner_string ~ "\"" }
+inner_string = @{ char* }
 boolean = { "true" | "false" }
 null = { "null" }
 
 char = {
   !("\"" | "\\") ~ ANY
   | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
-  | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+  | unicode_escape_sequence
 }
+
+identifier_name = @{ identifier_start ~ identifier_part*  }
+identifier_start = _{ unicode_letter | "$" | "_" | unicode_escape_sequence }
+identifier_part = _{ identifier_start | ASCII_DIGIT | CONNECTOR_PUNCTUATION }
+
+unicode_escape_sequence = @{ "\\u" ~ ASCII_HEX_DIGIT{4} }
+unicode_letter = _{ LETTER | NUMBER }
 
 number = @{
   "-"?
