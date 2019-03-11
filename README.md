@@ -13,3 +13,8 @@ usage: findup NAME
 usage: ws CONNECTION
     Interact with CONNECTION using websocket protocol.
 ```
+## jsonish
+```bash
+usage: jsonish FILE
+    Parse FILE into JSON, accepting unquoted object properties and trailing commas.
+    ```

@@ -11,7 +11,7 @@ use pest::error::Error;
 use smol::result::{SmolResult, SmolError};
 
 #[derive(Parser)]
-#[grammar = "grammar/eson.pest"]
+#[grammar = "grammar/jsonish.pest"]
 struct ESONParser;
 
 #[derive(Debug, PartialEq)]
@@ -24,8 +24,8 @@ enum JSONValue<'a> {
     Null,
 }
 
-fn parse_eson_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
-    let json = ESONParser::parse(Rule::json, contents)?
+fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
+    let jsonish = ESONParser::parse(Rule::jsonish, contents)?
         .next()
         .unwrap()
         .into_inner()
@@ -58,7 +58,7 @@ fn parse_eson_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
             Rule::number => JSONValue::Number(pair.as_str().parse().unwrap()),
             Rule::boolean => JSONValue::Boolean(pair.as_str().parse().unwrap()),
             Rule::null => JSONValue::Null,
-            Rule::json
+            Rule::jsonish
             | Rule::EOI
             | Rule::pair
             | Rule::value
@@ -73,7 +73,7 @@ fn parse_eson_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
         }
     }
 
-    Ok(parse_value(json))
+    Ok(parse_value(jsonish))
 }
 
 fn serialize_jsonvalue(val: &JSONValue) -> String {
@@ -102,7 +102,7 @@ fn serialize_jsonvalue(val: &JSONValue) -> String {
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
         "usage: {} FILE
-    Parse FILE into JSON.",
+    Parse FILE into JSON, accepting unquoted object properties and trailing commas.",
         args[0]
     );
 
@@ -113,7 +113,7 @@ fn parse(name: &str) -> SmolResult<()> {
     let contents = fs::read_to_string(name)
         .map_err(|_| SmolError(exitcode::NOINPUT, Some("Could not open file".to_string())))?;
 
-    let json: JSONValue = parse_eson_file(&contents)
+    let json: JSONValue = parse_jsonish_file(&contents)
         .map_err(|e| SmolError::from_err(exitcode::DATAERR, &e, "Could not parse file"))?;
 
     println!("{}", serialize_jsonvalue(&json));
@@ -163,7 +163,7 @@ mod tests {
                 "anotherOne": true,
                 "asdf": false
             },
-            "_stuff": [1, 2, 3, null, {}, false, "asdf", []]
+            "_stuff": [1, 2, 3, null, {}, false, "asdf", []],
         }
         "#;
 
@@ -188,7 +188,7 @@ mod tests {
             ])),
         ]);
 
-        let result = parse_eson_file(json);
+        let result = parse_jsonish_file(json);
 
         assert!(result.is_ok(), "{:?}", result);
 
@@ -237,7 +237,7 @@ mod tests {
             ])),
         ]);
 
-        let result = parse_eson_file(es);
+        let result = parse_jsonish_file(es);
 
         assert!(result.is_ok(), "{:?}", result);
 
