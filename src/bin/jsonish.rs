@@ -5,11 +5,18 @@ extern crate pest_derive;
 
 use std::env;
 use std::fs;
+use std::io;
+use std::io::prelude::*;
 
 use pest::error::Error;
 use pest::Parser;
 
 use smol::result::{SmolError, SmolResult};
+
+enum Input<'a> {
+    Stdin,
+    File(&'a str),
+}
 
 #[derive(Parser)]
 #[grammar = "grammar/jsonish.pest"]
@@ -122,17 +129,30 @@ fn serialize_jsonvalue(val: &JSONValue) -> String {
 
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
-        "usage: {} FILE
-    Parse FILE into JSON accepting single quotes, unquoted object properties, and trailing commas.",
+        "usage: {} [-i] [FILE]
+    Parse into JSON accepting single quotes, unquoted object properties, and trailing commas.
+    Use -i for stdin or read from FILE",
         args[0]
     );
 
     SmolError(exitcode::USAGE, None).into()
 }
 
-fn parse(name: &str) -> SmolResult<()> {
-    let contents = fs::read_to_string(name)
-        .map_err(|_| SmolError(exitcode::NOINPUT, Some("Could not open file".to_string())))?;
+fn parse(input: Input) -> SmolResult<()> {
+    let contents = match input {
+        Input::File(name) => fs::read_to_string(name)
+            .map_err(|_| SmolError(exitcode::NOINPUT, Some("Could not open file".to_string())))?,
+        Input::Stdin => {
+            let mut buf = String::new();
+            io::stdin().read_to_string(&mut buf).map_err(|_| {
+                SmolError(
+                    exitcode::NOINPUT,
+                    Some("Could not read from stdin".to_string()),
+                )
+            })?;
+            buf
+        }
+    };
 
     let json: JSONValue = parse_jsonish_file(&contents)
         .map_err(|e| SmolError::from_err(exitcode::DATAERR, &e, "Could not parse file"))?;
@@ -145,11 +165,12 @@ fn parse(name: &str) -> SmolResult<()> {
 fn run(args: Vec<String>) -> SmolResult<()> {
     let file_name: Option<&str> = match args.len() {
         2 => Some(&args[1]),
-        _ => None,
+        _ => return help(args).into(),
     };
 
     match file_name {
-        Some(name) => parse(name).into(),
+        Some("-i") => parse(Input::Stdin).into(),
+        Some(name) => parse(Input::File(name)).into(),
         None => help(args).into(),
     }
 }
