@@ -129,9 +129,9 @@ fn serialize_jsonvalue(val: &JSONValue) -> String {
 
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
-        "usage: {} [-i] [FILE]
+        "usage: {} [FILE]
     Parse into JSON accepting single quotes, unquoted object properties, and trailing commas.
-    Use -i for stdin or read from FILE",
+    Reads from stdin if FILE is not provided.",
         args[0]
     );
 
@@ -165,13 +165,13 @@ fn parse(input: Input) -> SmolResult<()> {
 fn run(args: Vec<String>) -> SmolResult<()> {
     let file_name: Option<&str> = match args.len() {
         2 => Some(&args[1]),
-        _ => return help(args).into(),
+        _ => None,
     };
 
     match file_name {
-        Some("-i") => parse(Input::Stdin).into(),
+        Some("-h") => help(args).into(),
         Some(name) => parse(Input::File(name)).into(),
-        None => help(args).into(),
+        None => parse(Input::Stdin).into(),
     }
 }
 

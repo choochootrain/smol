@@ -15,8 +15,7 @@ usage: ws CONNECTION
 ```
 ## jsonish
 ```bash
-usage: jsonish [-i] [FILE]
+usage: jsonish [FILE]
     Parse into JSON accepting single quotes, unquoted object properties, and trailing commas.
-    Use -i for stdin or read from FILE: jsonish file
-    parse file into json accepting single quotes, unquoted object properties, and trailing commas.
-    ```
+    Reads from stdin if FILE is not provided.
+```
