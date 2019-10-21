@@ -1,4 +1,4 @@
-jsonish = { SOI ~ (object | array) ~ EOI }
+jsonish = { SOI ~ value ~ EOI }
 
 object = {
   "{" ~ "}" |
