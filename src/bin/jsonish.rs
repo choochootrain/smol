@@ -4,6 +4,7 @@ extern crate pest;
 extern crate pest_derive;
 
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
@@ -18,10 +19,6 @@ enum Input<'a> {
     File(&'a str),
 }
 
-#[derive(Parser)]
-#[grammar = "grammar/jsonish.pest"]
-struct ESONParser;
-
 #[derive(Debug, PartialEq)]
 enum JSONValue<'a> {
     Object(Vec<(&'a str, JSONValue<'a>)>),
@@ -31,6 +28,38 @@ enum JSONValue<'a> {
     Boolean(bool),
     Null,
 }
+
+impl JSONValue<'_> {
+    fn to_json(&self) -> String {
+        match self {
+            JSONValue::Object(o) => {
+                let contents: Vec<_> = o
+                    .iter()
+                    .map(|(name, value)| format!("\"{}\":{}", name, value.to_json()))
+                    .collect();
+                return format!("{{{}}}", contents.join(","));
+            }
+            JSONValue::Array(a) => {
+                let contents: Vec<_> = a.iter().map(|j| j.to_json()).collect();
+                return format!("[{}]", contents.join(","));
+            }
+            JSONValue::String(s) => format!("\"{}\"", s),
+            JSONValue::Number(n) => format!("{}", n),
+            JSONValue::Boolean(b) => format!("{}", b),
+            JSONValue::Null => format!("null"),
+        }
+    }
+}
+
+impl fmt::Display for JSONValue<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_json())
+    }
+}
+
+#[derive(Parser)]
+#[grammar = "grammar/jsonish.pest"]
+struct ESONParser;
 
 fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
     let jsonish = ESONParser::parse(Rule::jsonish, contents)?
@@ -107,26 +136,6 @@ fn parse_jsonish_file(contents: &str) -> Result<JSONValue, Error<Rule>> {
     Ok(parse_value(jsonish))
 }
 
-fn serialize_jsonvalue(val: &JSONValue) -> String {
-    match val {
-        JSONValue::Object(o) => {
-            let contents: Vec<_> = o
-                .iter()
-                .map(|(name, value)| format!("\"{}\": {}", name, serialize_jsonvalue(value)))
-                .collect();
-            format!("{{{}}}", contents.join(","))
-        }
-        JSONValue::Array(a) => {
-            let contents: Vec<_> = a.iter().map(serialize_jsonvalue).collect();
-            format!("[{}]", contents.join(","))
-        }
-        JSONValue::String(s) => format!("\"{}\"", s),
-        JSONValue::Number(n) => format!("{}", n),
-        JSONValue::Boolean(b) => format!("{}", b),
-        JSONValue::Null => format!("null"),
-    }
-}
-
 fn help(args: Vec<String>) -> SmolResult<()> {
     println!(
         "usage: {} [FILE]
@@ -154,10 +163,10 @@ fn parse(input: Input) -> SmolResult<()> {
         }
     };
 
-    let json: JSONValue = parse_jsonish_file(&contents)
+    let json = parse_jsonish_file(&contents)
         .map_err(|e| SmolError::from_err(exitcode::DATAERR, &e, "Could not parse file"))?;
 
-    println!("{}", serialize_jsonvalue(&json));
+    println!("{}", json);
 
     Ok(())
 }
@@ -245,8 +254,8 @@ mod tests {
         let result = result.unwrap();
         pretty_assert_eq!(result, expected);
 
-        let serialized = serialize_jsonvalue(&result);
-        let expected = r#"{"a": "foobar","b": "\"baz\"","c": -12.43,"d": null,"$nested": {"anotherOne": true,"asdf": false},"_stuff": [1,2,3,null,{},false,"asdf",[]],"a.b!{}": "c"}"#;
+        let serialized = result.to_json();
+        let expected = r#"{"a":"foobar","b":"\"baz\"","c":-12.43,"d":null,"$nested":{"anotherOne":true,"asdf":false},"_stuff":[1,2,3,null,{},false,"asdf",[]],"a.b!{}":"c"}"#;
         pretty_assert_eq!(serialized, expected);
     }
 
@@ -302,8 +311,8 @@ mod tests {
         let result = result.unwrap();
         pretty_assert_eq!(result, expected);
 
-        let serialized = serialize_jsonvalue(&result);
-        let expected = r#"{"a": "foobar","b": "\"baz\"","c": -12.43,"d": null,"$nested": {"anotherOne": true,"asdf": false},"_stuff": [1,2,3,null,{},false,"asdf",[]],"a.b!{}": "c"}"#;
+        let serialized = result.to_json();
+        let expected = r#"{"a":"foobar","b":"\"baz\"","c":-12.43,"d":null,"$nested":{"anotherOne":true,"asdf":false},"_stuff":[1,2,3,null,{},false,"asdf",[]],"a.b!{}":"c"}"#;
         pretty_assert_eq!(serialized, expected);
     }
 }
