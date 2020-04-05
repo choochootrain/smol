@@ -28,6 +28,7 @@ fn help(args: Vec<String>) -> SmolResult<()> {
     SmolError(exitcode::USAGE, None).into()
 }
 
+#[allow(unused_must_use)]
 fn ws(connection: &str) -> SmolResult<()> {
     println!("Connecting to {}", connection);
 

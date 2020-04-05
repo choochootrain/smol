@@ -8,7 +8,7 @@ pub type SmolResult<T> = Result<T, SmolError>;
 pub struct SmolError(pub exitcode::ExitCode, pub Option<String>);
 
 impl SmolError {
-    pub fn from_err<D>(code: exitcode::ExitCode, error: &Error, message: D) -> SmolError
+    pub fn from_err<D>(code: exitcode::ExitCode, error: &dyn Error, message: D) -> SmolError
     where
         D: fmt::Display,
     {
